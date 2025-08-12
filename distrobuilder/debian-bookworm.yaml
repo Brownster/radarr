@@ -1,0 +1,38 @@
+image:
+  distribution: debian
+  release: bookworm
+  description: "Debian 12 (bookworm) base for Radarr (Incus)"
+  architecture: aarch64
+
+source:
+  downloader: debootstrap
+  url: http://deb.debian.org/debian
+
+targets:
+  lxc:
+    create_message: "Base image built"
+  incus:
+    create_message: "Base image built"
+
+packages:
+  manager: apt
+  update: true
+  cleanup: true
+  sets:
+    - packages:
+        - ca-certificates
+        - curl
+        - wget
+        - gnupg
+        - tzdata
+        - sudo
+        - iproute2
+        - systemd
+        - procps
+        - libicu-dev
+        - libchromaprint-tools
+        - libmediainfo0v5
+        - mediainfo
+        - libssl3
+        - libsqlite3-0
+        - libgdiplus

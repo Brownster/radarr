@@ -1,0 +1,65 @@
+name: build-radarr-incus
+
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"   # daily build to track upstream
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        track: [release, main]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y golang-go debootstrap squashfs-tools xz-utils btrfs-progs uidmap qemu-user-static
+          sudo snap install distrobuilder --classic
+
+      - name: Prepare output dirs
+        run: mkdir -p out/rootfs out/image
+
+      - name: Build base rootfs with distrobuilder (Debian 12, arm64)
+        run: |
+          sudo distrobuilder build-dir distrobuilder/debian-bookworm.yaml out/rootfs
+
+      - name: Install Radarr (release track)
+        if: matrix.track == 'release'
+        run: sudo bash scripts/install_radarr_release.sh out/rootfs
+
+      - name: Install Radarr (main track from source)
+        if: matrix.track == 'main'
+        run: sudo bash scripts/build_radarr_from_source.sh out/rootfs
+
+      - name: Add systemd unit + defaults
+        run: |
+          sudo install -Dm0644 service/radarr.service out/rootfs/etc/systemd/system/radarr.service
+          # Enable on boot
+          sudo chroot out/rootfs /bin/bash -lc 'systemctl enable radarr || true'
+
+      - name: Package Incus image tarballs
+        run: |
+          cat > out/image/metadata.yaml <<'EOF'
+architecture: aarch64
+creation_date: $(date +%s)
+properties:
+  os: debian
+  release: bookworm
+  description: "Radarr on Debian 12 (aarch64)"
+templates: {}
+EOF
+          sudo tar -C out -czf radarr-${{ matrix.track }}-rootfs.tar.gz rootfs
+          sudo tar -C out/image -czf radarr-${{ matrix.track }}-metadata.tar.gz metadata.yaml
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: radarr-${{ matrix.track }}-incus-image
+          path: |
+            radarr-${{ matrix.track }}-rootfs.tar.gz
+            radarr-${{ matrix.track }}-metadata.tar.gz
