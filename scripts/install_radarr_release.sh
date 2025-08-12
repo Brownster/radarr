@@ -6,27 +6,34 @@ if [ ! -d "$ROOTFS" ]; then
   exit 1
 fi
 
-# Determine latest arm64 tarball from GitHub API
-echo "Fetching latest Radarr arm64 release URL..."
 API_URL="https://api.github.com/repos/Radarr/Radarr/releases/latest"
-URL=$(curl -fsSL "$API_URL" | jq -r '.assets[] | select(.name | test("linux-arm64.*\.tar\.gz$")) | .browser_download_url' | head -n1)
-if [ -z "$URL" ]; then
+echo "Fetching latest Radarr arm64 release URL..."
+URL=$(curl -fsSL "$API_URL" \
+  | jq -r '.assets[]? | select(.name|test("(?i)linux.*arm64.*\\.tar\\.gz$")) | .browser_download_url' \
+  | head -n1)
+
+if [ -z "${URL:-}" ]; then
   echo "Could not find arm64 tarball in latest release" >&2
   exit 2
 fi
 echo "Latest URL: $URL"
 
-# Create radarr user/group and directories
+# Users, dirs, permissions
 chroot "$ROOTFS" /bin/bash -lc 'groupadd -r media || true; useradd -r -s /usr/sbin/nologin -g media -d /var/lib/radarr radarr || true'
-mkdir -p "$ROOTFS/opt/radarr" "$ROOTFS/var/lib/radarr" "$ROOTFS/config" "$ROOTFS/srv/media"
+mkdir -p "$ROOTFS/opt/radarr" "$ROOTFS/var/lib/radarr" "$ROOTFS/config" "$ROOTFS/srv"
 chroot "$ROOTFS" /bin/bash -lc 'chown -R radarr:media /var/lib/radarr'
-chown -R radarr:media "$ROOTFS/config" "$ROOTFS/srv/media" || true
+chown -R radarr:media "$ROOTFS/config" || true
 
-# Download and install
+# Download & install
 TMP="$(mktemp -d)"
 curl -fsSL "$URL" -o "$TMP/radarr.tar.gz"
 tar -xzf "$TMP/radarr.tar.gz" -C "$ROOTFS/opt/radarr" --strip-components=1
 rm -rf "$TMP"
 
-# Default data dir
+# Defaults for service
 echo "RADARR_DATA=/config" > "$ROOTFS/etc/default/radarr"
+
+# Sensible timezone default (adjust if you want)
+echo "Etc/UTC" > "$ROOTFS/etc/timezone"
+ln -sf /usr/share/zoneinfo/Etc/UTC "$ROOTFS/etc/localtime"
+
