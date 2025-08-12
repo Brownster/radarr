@@ -57,6 +57,7 @@ jobs:
             description: "Radarr on Debian 12 (aarch64)"
           templates: {}
           EOF
+
           sudo tar -C out -czf radarr-${{ matrix.track }}-rootfs.tar.gz rootfs
           sudo tar -C out/image -czf radarr-${{ matrix.track }}-metadata.tar.gz metadata.yaml
 
