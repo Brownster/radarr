@@ -8,12 +8,6 @@ source:
   downloader: debootstrap
   url: http://deb.debian.org/debian
 
-targets:
-  lxc:
-    create_message: "Base image built"
-  incus:
-    create_message: "Base image built"
-
 packages:
   manager: apt
   update: true
@@ -36,3 +30,4 @@ packages:
         - libssl3
         - libsqlite3-0
         - libgdiplus
+
