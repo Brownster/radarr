@@ -12,13 +12,14 @@ jobs:
     strategy:
       matrix:
         track: [release, main]
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Install build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y golang-go debootstrap squashfs-tools xz-utils btrfs-progs uidmap qemu-user-static
+          sudo apt-get install -y golang-go debootstrap squashfs-tools xz-utils btrfs-progs uidmap qemu-user-static jq
           sudo snap install distrobuilder --classic
 
       - name: Prepare output dirs
@@ -39,20 +40,23 @@ jobs:
       - name: Add systemd unit + defaults
         run: |
           sudo install -Dm0644 service/radarr.service out/rootfs/etc/systemd/system/radarr.service
-          # Enable on boot
+          # Enabling in a chroot isn't meaningful, but keep it non-fatal:
           sudo chroot out/rootfs /bin/bash -lc 'systemctl enable radarr || true'
 
       - name: Package Incus image tarballs
+        shell: bash
         run: |
-          cat > out/image/metadata.yaml <<'EOF'
-architecture: aarch64
-creation_date: $(date +%s)
-properties:
-  os: debian
-  release: bookworm
-  description: "Radarr on Debian 12 (aarch64)"
-templates: {}
-EOF
+          mkdir -p out/image
+          creation_date=$(date +%s)
+          cat > out/image/metadata.yaml <<-EOF
+          architecture: aarch64
+          creation_date: ${creation_date}
+          properties:
+            os: debian
+            release: bookworm
+            description: "Radarr on Debian 12 (aarch64)"
+          templates: {}
+          EOF
           sudo tar -C out -czf radarr-${{ matrix.track }}-rootfs.tar.gz rootfs
           sudo tar -C out/image -czf radarr-${{ matrix.track }}-metadata.tar.gz metadata.yaml
 
