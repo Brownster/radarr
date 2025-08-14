@@ -49,14 +49,15 @@ jobs:
           mkdir -p out/image
           creation_date=$(date +%s)
           cat > out/image/metadata.yaml <<EOF
-architecture: aarch64
-creation_date: ${creation_date}
-properties:
-  os: debian
-  release: bookworm
-  description: "Radarr on Debian 12 (aarch64)"
-templates: {}
-EOF
+          architecture: aarch64
+          creation_date: ${creation_date}
+          properties:
+            os: debian
+            release: bookworm
+            description: "Radarr on Debian 12 (aarch64)"
+          templates: {}
+          EOF
+
           sudo tar -C out -czf radarr-${{ matrix.track }}-rootfs.tar.gz rootfs
           sudo tar -C out/image -czf radarr-${{ matrix.track }}-metadata.tar.gz metadata.yaml
 
